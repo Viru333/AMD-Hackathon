@@ -1,0 +1,7 @@
+openai
+vllm
+streamlit
+sentence-transformers
+faiss-cpu
+pydantic
+numpy
