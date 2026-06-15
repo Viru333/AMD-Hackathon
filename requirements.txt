@@ -1,7 +1,37 @@
-openai
-vllm
-streamlit
-sentence-transformers
-faiss-cpu
-pydantic
-numpy
+# ── Web framework ─────────────────────────────────────────────────
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9
+
+# ── Data / ML ─────────────────────────────────────────────────────
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+xgboost>=2.0.0
+joblib>=1.3.0
+
+# ── Embeddings ────────────────────────────────────────────────────
+# Default (fast, 384-dim) — works on any machine with ~500 MB RAM
+sentence-transformers>=2.7.0
+torch>=2.0.0           # required by sentence-transformers (CPU-only is fine)
+
+# For BGE-M3 (1024-dim, higher accuracy) — set EMBEDDING_MODEL=BAAI/bge-m3
+# No extra package needed; sentence-transformers handles it automatically.
+
+# ── Vector store ─────────────────────────────────────────────────
+qdrant-client>=1.9.0
+
+# ── LangGraph + LangChain ─────────────────────────────────────────
+langgraph>=0.1.0
+langchain-core>=0.2.0
+
+# ── Database ──────────────────────────────────────────────────────
+sqlalchemy>=2.0.0
+# For PostgreSQL, also add:
+# psycopg2-binary>=2.9.0
+
+# ── Utilities ─────────────────────────────────────────────────────
+pydantic>=2.6.0
+python-dotenv>=1.0.0
+httpx>=0.27.0           # async HTTP client (used by tests / LangGraph HTTP calls)
+aiofiles>=23.2.0
