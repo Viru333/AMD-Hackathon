@@ -143,7 +143,7 @@ def get_collection_info() -> Dict[str, Any]:
         info = client.get_collection(QDRANT_COLLECTION)
         return {
             "status": "ready",
-            "vectors_count": info.vectors_count or 0,
+            "vectors_count": getattr(info, "points_count", None) or getattr(info, "vectors_count", None) or 0,
             "collection": QDRANT_COLLECTION,
         }
     except Exception:
