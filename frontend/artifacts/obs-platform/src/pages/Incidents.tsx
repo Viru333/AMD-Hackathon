@@ -1,37 +1,59 @@
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
-import { Search, ShieldAlert } from "lucide-react";
-import { api } from "@/lib/api";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Check, ChevronsUpDown, Search, ShieldAlert } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { SeverityBadge } from "@/components/SeverityBadge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { ROOT_CAUSE_NAMES, generateIncidents } from "@/lib/mockData";
+
+type TimeWindow = "24" | "8";
 
 export default function Incidents() {
   const [, setLocation] = useLocation();
   const [severity, setSeverity] = useState<string>("all");
   const [rootCause, setRootCause] = useState<string>("");
+  const [rcOpen, setRcOpen] = useState(false);
   const [anomalyOnly, setAnomalyOnly] = useState(false);
-  
-  // Debounce search
-  const [debouncedRootCause, setDebouncedRootCause] = useState("");
-  useEffect(() => {
-    const handler = setTimeout(() => setDebouncedRootCause(rootCause), 500);
-    return () => clearTimeout(handler);
-  }, [rootCause]);
+  const [timeWindow, setTimeWindow] = useState<TimeWindow>("24");
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["incidents", severity, debouncedRootCause, anomalyOnly],
-    queryFn: ({ signal }) => api.getIncidents({ 
-      limit: 50,
-      severity: severity === "all" ? undefined : severity,
-      root_cause: debouncedRootCause || undefined,
-      anomaly_only: anomalyOnly || undefined
-    }, signal),
-  });
+  const allIncidents = useMemo(() => generateIncidents(60), []);
+
+  const incidents = useMemo(() => {
+    const cutoff = Date.now() - Number(timeWindow) * 60 * 60 * 1000;
+    return allIncidents.filter((inc) => {
+      if (new Date(inc.timestamp).getTime() < cutoff) return false;
+      if (severity !== "all" && inc.severity !== severity) return false;
+      if (rootCause && inc.root_cause !== rootCause) return false;
+      if (anomalyOnly && !inc.anomaly) return false;
+      return true;
+    });
+  }, [allIncidents, timeWindow, severity, rootCause, anomalyOnly]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -40,19 +62,61 @@ export default function Incidents() {
         <p className="text-muted-foreground">Search and filter past incident analyses.</p>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 bg-card p-4 rounded-lg border border-border/50">
+      <div className="flex flex-col lg:flex-row gap-4 bg-card p-4 rounded-lg border border-border/50">
+        {/* Searchable root-cause dropdown */}
         <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search root cause..." 
-            className="pl-9"
-            value={rootCause}
-            onChange={(e) => {
-              setRootCause(e.target.value);
-            }}
-          />
+          <Popover open={rcOpen} onOpenChange={setRcOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={rcOpen}
+                className="w-full justify-between font-normal"
+              >
+                <span className="flex items-center gap-2 truncate">
+                  <Search className="h-4 w-4 text-muted-foreground" />
+                  {rootCause || "Search root cause..."}
+                </span>
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Search root cause..." />
+                <CommandList>
+                  <CommandEmpty>No root cause found.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value="__all__"
+                      onSelect={() => {
+                        setRootCause("");
+                        setRcOpen(false);
+                      }}
+                    >
+                      <Check className={cn("mr-2 h-4 w-4", rootCause === "" ? "opacity-100" : "opacity-0")} />
+                      All root causes
+                    </CommandItem>
+                    {ROOT_CAUSE_NAMES.map((name) => (
+                      <CommandItem
+                        key={name}
+                        value={name}
+                        onSelect={() => {
+                          setRootCause(name === rootCause ? "" : name);
+                          setRcOpen(false);
+                        }}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", rootCause === name ? "opacity-100" : "opacity-0")} />
+                        {name}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
-        <div className="w-full sm:w-48">
+
+        <div className="w-full lg:w-48">
           <Select value={severity} onValueChange={setSeverity}>
             <SelectTrigger>
               <SelectValue placeholder="Severity" />
@@ -66,16 +130,37 @@ export default function Incidents() {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center space-x-2 w-full sm:w-auto">
-          <Checkbox 
-            id="anomaly" 
-            checked={anomalyOnly}
-            onCheckedChange={(c) => setAnomalyOnly(c as boolean)} 
-          />
-          <label htmlFor="anomaly" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-            Anomalies Only
-          </label>
+
+        {/* Anomaly time-window toggle */}
+        <div className="flex items-center gap-3">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-muted-foreground">Anomaly window</span>
+            <ToggleGroup
+              type="single"
+              value={timeWindow}
+              onValueChange={(v) => v && setTimeWindow(v as TimeWindow)}
+              variant="outline"
+              size="sm"
+            >
+              <ToggleGroupItem value="24" aria-label="Last 24 hours">24hr</ToggleGroupItem>
+              <ToggleGroupItem value="8" aria-label="Last 8 hours">8hr</ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+          <div className="flex items-center space-x-2 pt-4">
+            <Checkbox
+              id="anomaly"
+              checked={anomalyOnly}
+              onCheckedChange={(c) => setAnomalyOnly(c as boolean)}
+            />
+            <label htmlFor="anomaly" className="text-sm font-medium leading-none">
+              Anomalies Only
+            </label>
+          </div>
         </div>
+      </div>
+
+      <div className="text-sm text-muted-foreground">
+        Showing <span className="font-medium text-foreground">{incidents.length}</span> incidents from the last {timeWindow} hours.
       </div>
 
       <div className="border border-border/50 rounded-md bg-card">
@@ -91,21 +176,10 @@ export default function Incidents() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-6 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-8" /></TableCell>
-                </TableRow>
-              ))
-            ) : data?.incidents?.length ? (
-              data.incidents.map((inc: any) => (
-                <TableRow 
-                  key={inc.incident_id} 
+            {incidents.length ? (
+              incidents.map((inc) => (
+                <TableRow
+                  key={inc.incident_id}
                   className="cursor-pointer hover:bg-muted/50"
                   onClick={() => setLocation(`/results/${inc.incident_id}`)}
                 >

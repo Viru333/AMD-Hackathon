@@ -1,36 +1,106 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { Activity, AlertTriangle, ArrowRight, ServerCrash, ShieldAlert } from "lucide-react";
-import { api } from "@/lib/api";
+import { format } from "date-fns";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowRight,
+  CalendarIcon,
+  Play,
+  ServerCrash,
+  Sparkles,
+} from "lucide-react";
+import {
+  ResponsiveContainer,
+  ScatterChart,
+  Scatter,
+  XAxis,
+  YAxis,
+  ZAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  LabelList,
+} from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button";
 import { SeverityBadge } from "@/components/SeverityBadge";
+import { cn } from "@/lib/utils";
+import {
+  BUSINESS_AREAS,
+  CIRCLES,
+  HOURS,
+  SEVERITY_BY_LEVEL,
+  generateAnalysis,
+  type AnalysisFilters,
+  type SeverityPoint,
+} from "@/lib/mockData";
+
+function ChartTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const p: SeverityPoint = payload[0].payload;
+  return (
+    <div className="rounded-md border border-border/70 bg-popover text-popover-foreground shadow-md p-3 max-w-xs text-xs space-y-1.5">
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-semibold text-sm">{p.rootCause}</span>
+        <SeverityBadge severity={p.severityLabel} />
+      </div>
+      <p className="text-muted-foreground">{p.info.description}</p>
+      <div>
+        <span className="font-medium">Contributing factors: </span>
+        {p.info.contributingFactors.join(", ")}
+      </div>
+      <div>
+        <span className="font-medium">Remediation: </span>
+        {p.info.remediation}
+      </div>
+      <div className="flex items-center gap-4 pt-1 font-mono text-muted-foreground">
+        <span>{p.time}</span>
+        <span>errors: {p.errorCount}</span>
+        <span>{p.anomaly ? "anomaly" : "normal"}</span>
+      </div>
+    </div>
+  );
+}
 
 export default function Dashboard() {
-  const { data: incidentsData, isLoading } = useQuery({
-    queryKey: ["incidents", "recent"],
-    queryFn: ({ signal }) => api.getIncidents({ limit: 5 }, signal),
+  const [circle, setCircle] = useState(CIRCLES[0]);
+  const [businessArea, setBusinessArea] = useState(BUSINESS_AREAS[0]);
+  const [date, setDate] = useState<Date>(new Date());
+  const [hour, setHour] = useState(HOURS[9]);
+
+  // committed filters drive the analysis (updated on "Run Analysis")
+  const [applied, setApplied] = useState<AnalysisFilters>({
+    circle: CIRCLES[0],
+    businessArea: BUSINESS_AREAS[0],
+    date: format(new Date(), "yyyy-MM-dd"),
+    hour: HOURS[9],
   });
 
-  const { data: totalData } = useQuery({
-    queryKey: ["incidents", "total"],
-    queryFn: ({ signal }) => api.getIncidents({ limit: 1 }, signal),
-  });
+  const analysis = useMemo(() => generateAnalysis(applied), [applied]);
 
-  const { data: p1Data } = useQuery({
-    queryKey: ["incidents", "p1"],
-    queryFn: ({ signal }) => api.getIncidents({ limit: 1, severity: "P1 Critical" }, signal),
-  });
-
-  const { data: anomalyData } = useQuery({
-    queryKey: ["incidents", "anomaly"],
-    queryFn: ({ signal }) => api.getIncidents({ limit: 1, anomaly_only: true }, signal),
-  });
+  const runAnalysis = () => {
+    setApplied({
+      circle,
+      businessArea,
+      date: format(date, "yyyy-MM-dd"),
+      hour,
+    });
+  };
 
   const stats = [
-    { title: "Total Incidents", value: totalData?.total ?? "-", icon: Activity, color: "text-blue-500" },
-    { title: "P1 Critical", value: p1Data?.total ?? "-", icon: ServerCrash, color: "text-red-500" },
-    { title: "Anomalies Detected", value: anomalyData?.total ?? "-", icon: AlertTriangle, color: "text-orange-500" },
+    { title: "Active Incidents", value: analysis.summary.totalIncidents, icon: Activity, color: "text-blue-500" },
+    { title: "P1 Critical", value: analysis.summary.p1Count, icon: ServerCrash, color: "text-red-500" },
+    { title: "Anomalies Detected", value: analysis.summary.anomalies, icon: AlertTriangle, color: "text-orange-500" },
+    { title: "Top Root Cause", value: analysis.summary.topRootCause, icon: Sparkles, color: "text-violet-500" },
   ];
 
   return (
@@ -48,7 +118,73 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* ── Filters ─────────────────────────────────────────────── */}
+      <Card className="border-border/50 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Analysis Filters</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Geographical Circle</label>
+            <Select value={circle} onValueChange={setCircle}>
+              <SelectTrigger><SelectValue placeholder="Circle" /></SelectTrigger>
+              <SelectContent>
+                {CIRCLES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Business Area</label>
+            <Select value={businessArea} onValueChange={setBusinessArea}>
+              <SelectTrigger><SelectValue placeholder="Business Area" /></SelectTrigger>
+              <SelectContent>
+                {BUSINESS_AREAS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Date</label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {date ? format(date, "PP") : "Pick a date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={(d) => d && setDate(d)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Time (hourly)</label>
+            <Select value={hour} onValueChange={setHour}>
+              <SelectTrigger><SelectValue placeholder="Hour" /></SelectTrigger>
+              <SelectContent className="max-h-64">
+                {HOURS.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button onClick={runAnalysis} className="font-medium">
+            <Play className="mr-2 h-4 w-4" /> Run Analysis
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* ── Stat cards ──────────────────────────────────────────── */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat, i) => (
           <Card key={i} className="border-border/50 shadow-sm">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -56,54 +192,57 @@ export default function Dashboard() {
               <stat.icon className={`h-4 w-4 ${stat.color}`} />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold font-mono">{stat.value}</div>
+              <div className="text-2xl font-bold font-mono truncate">{stat.value}</div>
             </CardContent>
           </Card>
         ))}
       </div>
 
+      {/* ── Severity vs Time chart ──────────────────────────────── */}
       <Card className="border-border/50 shadow-sm">
         <CardHeader>
-          <CardTitle>Recent Incidents</CardTitle>
+          <CardTitle>Severity Level vs Time</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {applied.circle} · {applied.businessArea} · {applied.date} · peak @ {applied.hour}.
+            Each point is labelled with its root cause — hover for details.
+          </p>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}
-            </div>
-          ) : incidentsData?.incidents?.length > 0 ? (
-            <div className="space-y-4">
-              {incidentsData.incidents.map((incident: any) => (
-                <div key={incident.incident_id} className="flex items-center justify-between p-3 border border-border/50 rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <SeverityBadge severity={incident.severity} />
-                    <div>
-                      <p className="text-sm font-medium flex items-center gap-2">
-                        {incident.service}
-                        {incident.anomaly && <ShieldAlert className="w-3.5 h-3.5 text-orange-500" />}
-                      </p>
-                      <p className="text-xs text-muted-foreground font-mono">{new Date(incident.timestamp).toLocaleString()}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-6 text-sm">
-                    <div className="hidden md:block">
-                      <p className="text-muted-foreground text-xs">Root Cause</p>
-                      <p className="font-medium truncate max-w-[200px]">{incident.root_cause}</p>
-                    </div>
-                    <Link href={`/results/${incident.incident_id}`}>
-                      <div className="text-primary hover:underline text-sm font-medium cursor-pointer">
-                        View Details
-                      </div>
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              No recent incidents found.
-            </div>
-          )}
+          <div className="h-[420px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <ScatterChart margin={{ top: 30, right: 30, bottom: 20, left: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
+                <XAxis
+                  dataKey="time"
+                  name="Time"
+                  tick={{ fontSize: 11 }}
+                  interval={1}
+                  angle={-35}
+                  textAnchor="end"
+                  height={50}
+                />
+                <YAxis
+                  dataKey="severityLevel"
+                  name="Severity"
+                  type="number"
+                  domain={[0, 5]}
+                  ticks={[1, 2, 3, 4]}
+                  tickFormatter={(v: number) => SEVERITY_BY_LEVEL[v] ?? ""}
+                  width={90}
+                  tick={{ fontSize: 11 }}
+                />
+                <ZAxis range={[120, 121]} />
+                <RechartsTooltip content={<ChartTooltip />} cursor={{ strokeDasharray: "3 3" }} />
+                <Scatter data={analysis.points} fill="hsl(var(--primary))">
+                  <LabelList
+                    dataKey="rootCause"
+                    position="top"
+                    style={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+                  />
+                </Scatter>
+              </ScatterChart>
+            </ResponsiveContainer>
+          </div>
         </CardContent>
       </Card>
     </div>
