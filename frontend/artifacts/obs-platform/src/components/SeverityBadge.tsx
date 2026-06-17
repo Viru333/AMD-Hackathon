@@ -1,12 +1,13 @@
 import { cn } from "@/lib/utils";
 
 interface SeverityBadgeProps {
-  severity: string;
+  severity?: string | null;
   className?: string;
 }
 
 export function SeverityBadge({ severity, className }: SeverityBadgeProps) {
-  const getSeverityColors = (sev: string) => {
+  const getSeverityColors = (sev: string | undefined | null) => {
+    if (!sev) return "bg-slate-600/10 text-slate-500 border-slate-500/20";
     if (sev.includes("P1")) return "bg-red-600/10 text-red-500 border-red-500/20";
     if (sev.includes("P2")) return "bg-orange-600/10 text-orange-500 border-orange-500/20";
     if (sev.includes("P3")) return "bg-yellow-600/10 text-yellow-500 border-yellow-500/20";
@@ -22,7 +23,7 @@ export function SeverityBadge({ severity, className }: SeverityBadgeProps) {
         className
       )}
     >
-      {severity}
+      {severity ?? "Unknown"}
     </span>
   );
 }

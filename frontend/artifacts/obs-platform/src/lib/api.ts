@@ -113,6 +113,7 @@ export const api = {
       body: JSON.stringify(payload),
       signal,
     });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   },
 
@@ -136,6 +137,7 @@ export const api = {
       body: JSON.stringify(payload),
       signal,
     });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   },
 
@@ -159,6 +161,7 @@ export const api = {
       body: JSON.stringify(payload),
       signal,
     });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   },
 
