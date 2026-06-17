@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Search, ShieldAlert } from "lucide-react";
@@ -18,11 +18,10 @@ export default function Incidents() {
   
   // Debounce search
   const [debouncedRootCause, setDebouncedRootCause] = useState("");
-  // Simple custom debounce since we don't have useDebounce hook easily accessible
-  useState(() => {
+  useEffect(() => {
     const handler = setTimeout(() => setDebouncedRootCause(rootCause), 500);
     return () => clearTimeout(handler);
-  });
+  }, [rootCause]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["incidents", severity, debouncedRootCause, anomalyOnly],
@@ -50,8 +49,6 @@ export default function Incidents() {
             value={rootCause}
             onChange={(e) => {
               setRootCause(e.target.value);
-              // manual debounce
-              setTimeout(() => setDebouncedRootCause(e.target.value), 500);
             }}
           />
         </div>
@@ -105,8 +102,8 @@ export default function Incidents() {
                   <TableCell><Skeleton className="h-4 w-8" /></TableCell>
                 </TableRow>
               ))
-            ) : data?.items?.length ? (
-              data.items.map((inc: any) => (
+            ) : data?.incidents?.length ? (
+              data.incidents.map((inc: any) => (
                 <TableRow 
                   key={inc.incident_id} 
                   className="cursor-pointer hover:bg-muted/50"
