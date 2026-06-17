@@ -71,9 +71,9 @@ export default function Dashboard() {
             <div className="space-y-3">
               {[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}
             </div>
-          ) : incidentsData?.items?.length > 0 ? (
+          ) : incidentsData?.incidents?.length > 0 ? (
             <div className="space-y-4">
-              {incidentsData.items.map((incident: any) => (
+              {incidentsData.incidents.map((incident: any) => (
                 <div key={incident.incident_id} className="flex items-center justify-between p-3 border border-border/50 rounded-lg hover:bg-muted/50 transition-colors">
                   <div className="flex items-center gap-4">
                     <SeverityBadge severity={incident.severity} />
