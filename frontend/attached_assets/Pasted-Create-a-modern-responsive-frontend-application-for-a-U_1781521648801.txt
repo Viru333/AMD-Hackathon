@@ -1,0 +1,201 @@
+Create a modern, responsive frontend application for a "Unified Agentic Observability and Root Cause Analysis Platform". The backend is a FastAPI application with the following API endpoints and data structures:  
+  
+## API Base URL  
+http://localhost:8000 (or configurable)  
+  
+## API Endpoints  
+  
+### 1. Health & Info  
+GET / - Returns API info (name, description, version, docs_url)  
+GET /health - Returns system health status (status, version, models, vector_db, database)  
+  
+### 2. ML Predictions  
+POST /predict/severity  
+Request body:  
+{  
+  "cpu_usage": float (0-100),  
+  "memory_usage": float (0-100),  
+  "disk_usage": float (0-100, default 50.0),  
+  "error_count": int (>=0),  
+  "warn_count": int (default 20),  
+  "alert_volume": int (default 3),  
+  "duration_min": float (default 30.0),  
+  "impacted_services": int (default 1),  
+  "latency_ms": float (default 200.0),  
+  "error_rate": float (default 0.5),  
+  "net_in_mbps": float (default 100.0),  
+  "net_out_mbps": float (default 80.0),  
+  "request_rate": float (default 500.0),  
+  "gc_pause_ms": float (default 20.0),  
+  "thread_count": float (default 50.0),  
+  "tower": string (default "Application"),  
+  "service": string (default "api-gateway")  
+}  
+Response:  
+{  
+  "severity": string ("P1 Critical", "P2 High", "P3 Medium", "P4 Low"),  
+  "confidence": float (0-1),  
+  "all_probabilities": object  
+}  
+  
+POST /predict/anomaly  
+Request body:  
+{  
+  "cpu": float (0-100),  
+  "memory": float (0-100),  
+  "latency": float (>=0),  
+  "disk": float (0-100, default 50.0),  
+  "error_rate": float (default 0.5),  
+  "net_in_mbps": float (default 100.0),  
+  "net_out_mbps": float (default 80.0),  
+  "request_rate": float (default 500.0),  
+  "gc_pause_ms": float (default 20.0),  
+  "thread_count": float (default 50.0),  
+  "tower": string (default "Application")  
+}  
+Response:  
+{  
+  "anomaly": boolean,  
+  "score": float (0-1),  
+  "threshold": float,  
+  "raw_score": float  
+}  
+  
+POST /predict/root-cause  
+Request body: (same as /predict/severity but with cpu, memory, latency, error_count as required fields)  
+Response:  
+{  
+  "root_cause": string,  
+  "confidence": float (0-1),  
+  "top3": [  
+    {"root_cause": string, "confidence": float}  
+  ],  
+  "all_probabilities": object  
+}  
+  
+### 3. Full Investigation (Agentic Workflow)  
+POST /investigate  
+Request body:  
+{  
+  (all fields from ObservabilityInput),  
+  "incident_id": string (optional),  
+  "description": string (optional, free-text incident description)  
+}  
+Response:  
+{  
+  "incident_id": string,  
+  "severity": string,  
+  "severity_confidence": float,  
+  "anomaly": boolean,  
+  "anomaly_score": float,  
+  "root_cause": string,  
+  "root_cause_confidence": float,  
+  "similar_incidents": [  
+    {  
+      "incident_id": string,  
+      "summary": string,  
+      "root_cause": string,  
+      "resolution": string,  
+      "score": float  
+    }  
+  ],  
+  "recommendations": [string],  
+  "report": string (JSON),  
+  "report_markdown": string,  
+  "processing_time_ms": float  
+}  
+  
+### 4. Incidents (Historical Data)  
+GET /incidents?limit=50&offset=0&severity=P1&root_cause=Database&anomaly_only=false  
+Response:  
+{  
+  "total": int,  
+  "incidents": [  
+    {  
+      "incident_id": string,  
+      "timestamp": datetime (ISO format),  
+      "severity": string,  
+      "severity_confidence": float,  
+      "anomaly": boolean,  
+      "anomaly_score": float,  
+      "root_cause": string,  
+      "root_cause_confidence": float,  
+      "tower": string,  
+      "service": string,  
+      "cpu_usage": float,  
+      "memory_usage": float,  
+      "disk_usage": float,  
+      "error_count": int,  
+      "report_summary": string  
+    }  
+  ]  
+}  
+  
+## Frontend Requirements  
+  
+### Tech Stack  
+- Use React with TypeScript  
+- Use a modern UI component library (shadcn/ui, Material-UI, or Chakra UI)  
+- Use axios for API calls  
+- Use react-markdown for rendering markdown reports  
+- Implement responsive design with Tailwind CSS  
+  
+### Pages/Sections  
+  
+1. **Dashboard/Home Page**  
+   - System health status indicator  
+   - Quick stats (total incidents, recent investigations)  
+   - Navigation to other sections  
+  
+2. **New Investigation Form**  
+   - Form with all ObservabilityInput fields  
+   - Group required vs optional fields  
+   - Validation for numeric ranges  
+   - "Run Investigation" button that triggers /investigate endpoint  
+   - Option to run individual predictions (severity, anomaly, root-cause) separately  
+  
+3. **Investigation Results Page**  
+   - Display incident ID and processing time  
+   - Severity card with emoji indicator and confidence bar  
+   - Anomaly detection status with score visualization  
+   - Root cause analysis with top 3 candidates and confidence percentages  
+   - Similar incidents table with similarity scores  
+   - Recommendations list  
+   - Full markdown report rendered with react-markdown  
+   - Option to download report as PDF or copy to clipboard  
+  
+4. **Historical Incidents Page**  
+   - Table with pagination  
+   - Filters: severity (dropdown), root cause (dropdown), anomaly only (checkbox)  
+   - Search by incident ID  
+   - Click on incident to view full details  
+   - Sortable columns (timestamp, severity, anomaly_score)  
+  
+5. **Individual Predictions Section**  
+   - Separate tabs/panels for severity, anomaly, and root-cause predictions  
+   - Real-time prediction as user types (debounced)  
+   - Visual confidence indicators  
+  
+### UI/UX Features  
+- Loading states for all API calls  
+- Error handling with user-friendly messages  
+- Dark mode support  
+- Color-coded severity levels (P1=red, P2=orange, P3=yellow, P4=green)  
+- Anomaly detection visual indicator (alert icon for true, checkmark for false)  
+- Confidence score progress bars  
+- Responsive layout for mobile devices  
+- Toast notifications for actions  
+  
+### Agentic Application Features  
+- Show the investigation workflow steps visually (Intake → Anomaly → Severity → Root Cause → Retrieval → Runbooks → Report)  
+- Display processing time for each step if available  
+- Highlight the AI-generated recommendations  
+- Show similar incidents with their resolutions to demonstrate learning from history  
+- Display the markdown report as a professional document  
+  
+### Configuration  
+- Environment variable for API base URL  
+- Configurable timeout for API calls  
+- Error retry logic for failed requests  
+  
+Please generate a complete, production-ready frontend application with all these features. Include proper TypeScript types, error handling, and follow React best practices.  
