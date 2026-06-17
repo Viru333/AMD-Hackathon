@@ -119,7 +119,7 @@ export default function Predictions() {
                   {severityResult ? (
                     <div className="space-y-6">
                       <div>
-                        <SeverityBadge severity={severityResult.prediction} className="text-xl px-4 py-2" />
+                        <SeverityBadge severity={severityResult.severity} className="text-xl px-4 py-2" />
                         <div className="mt-4">
                           <ConfidenceBar confidence={severityResult.confidence} label="Top Prediction Confidence" />
                         </div>
@@ -157,18 +157,18 @@ export default function Predictions() {
                   {anomalyResult ? (
                     <div className="space-y-6">
                       <div className="flex items-center gap-4">
-                        {anomalyResult.is_anomaly ? (
+                        {anomalyResult.anomaly ? (
                           <ShieldAlert className="w-12 h-12 text-orange-500" />
                         ) : (
                           <CheckCircle className="w-12 h-12 text-green-500" />
                         )}
                         <div>
-                          <div className="text-2xl font-bold">{anomalyResult.is_anomaly ? "ANOMALY DETECTED" : "SYSTEM NORMAL"}</div>
-                          <div className="text-sm text-muted-foreground">Score: {anomalyResult.anomaly_score.toFixed(4)}</div>
+                          <div className="text-2xl font-bold">{anomalyResult.anomaly ? "ANOMALY DETECTED" : "SYSTEM NORMAL"}</div>
+                          <div className="text-sm text-muted-foreground">Score: {anomalyResult.score.toFixed(4)}</div>
                         </div>
                       </div>
                       <div className="pt-4">
-                        <ConfidenceBar confidence={anomalyResult.anomaly_score} label="Anomaly Score (Higher is more anomalous)" />
+                        <ConfidenceBar confidence={anomalyResult.score} label="Anomaly Score (Higher is more anomalous)" />
                       </div>
                     </div>
                   ) : <div className="text-muted-foreground">Waiting for data...</div>}
@@ -190,24 +190,24 @@ export default function Predictions() {
                       <div>
                         <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">Primary Cause</h4>
                         <div className="text-xl font-bold p-3 bg-secondary/30 rounded-md border border-border/50">
-                          {rootCauseResult.prediction}
+                          {rootCauseResult.root_cause}
                         </div>
                         <div className="mt-4">
                           <ConfidenceBar confidence={rootCauseResult.confidence} label="Confidence" />
                         </div>
                       </div>
 
-                      {rootCauseResult.top_candidates && (
+                      {rootCauseResult.top3 && (
                         <div className="space-y-3 pt-4 border-t border-border/50">
                           <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">Top Candidates</h4>
-                          {rootCauseResult.top_candidates.map((cand: any, idx: number) => (
+                          {rootCauseResult.top3.map((cand: any, idx: number) => (
                             <div key={idx} className="bg-card border border-border/50 p-3 rounded-md">
                               <div className="flex justify-between items-center mb-2">
-                                <span className="font-medium text-sm">{cand.cause}</span>
-                                <span className="font-mono text-xs text-muted-foreground">{(cand.probability * 100).toFixed(1)}%</span>
+                                <span className="font-medium text-sm">{cand.root_cause}</span>
+                                <span className="font-mono text-xs text-muted-foreground">{(cand.confidence * 100).toFixed(1)}%</span>
                               </div>
                               <div className="w-full h-1.5 bg-secondary rounded-full overflow-hidden">
-                                <div className="h-full bg-primary opacity-70" style={{ width: `${cand.probability * 100}%` }} />
+                                <div className="h-full bg-primary opacity-70" style={{ width: `${cand.confidence * 100}%` }} />
                               </div>
                             </div>
                           ))}
