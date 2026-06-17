@@ -94,30 +94,69 @@ export const api = {
   },
   
   predictSeverity: async (data: ObservabilityInput, signal?: AbortSignal) => {
+    const payload = {
+      cpu: data.cpu_usage,
+      memory: data.memory_usage,
+      disk: data.disk_usage ?? 50,
+      latency: data.latency_ms,
+      error_count: data.error_count,
+      warn_count: data.warn_count ?? 20,
+      alert_volume: data.alert_volume ?? 3,
+      duration_min: data.duration_min ?? 30,
+      impacted_services: data.impacted_services ?? 1,
+      tower: data.tower ?? "Application",
+      service: data.service ?? "api-gateway",
+    };
     const res = await fetchWithRetry(`${API_BASE_URL}/predict/severity`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
       signal,
     });
     return res.json();
   },
 
   predictAnomaly: async (data: ObservabilityInput, signal?: AbortSignal) => {
+    const payload = {
+      cpu: data.cpu_usage,
+      memory: data.memory_usage,
+      latency: data.latency_ms,
+      disk: data.disk_usage ?? 50,
+      error_rate: data.error_rate ?? 0.5,
+      net_in_mbps: data.net_in_mbps ?? 100,
+      net_out_mbps: data.net_out_mbps ?? 80,
+      request_rate: data.request_rate ?? 500,
+      gc_pause_ms: data.gc_pause_ms ?? 20,
+      thread_count: data.thread_count ?? 50,
+      tower: data.tower ?? "Application",
+    };
     const res = await fetchWithRetry(`${API_BASE_URL}/predict/anomaly`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
       signal,
     });
     return res.json();
   },
 
   predictRootCause: async (data: ObservabilityInput, signal?: AbortSignal) => {
+    const payload = {
+      cpu: data.cpu_usage,
+      memory: data.memory_usage,
+      disk: data.disk_usage ?? 50,
+      latency: data.latency_ms,
+      error_count: data.error_count,
+      warn_count: data.warn_count ?? 20,
+      alert_volume: data.alert_volume ?? 3,
+      duration_min: data.duration_min ?? 30,
+      impacted_services: data.impacted_services ?? 1,
+      tower: data.tower ?? "Application",
+      service: data.service ?? "api-gateway",
+    };
     const res = await fetchWithRetry(`${API_BASE_URL}/predict/root-cause`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
       signal,
     });
     return res.json();
