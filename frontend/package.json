@@ -12,9 +12,11 @@
   "devDependencies": {
     "@rollup/rollup-win32-x64-msvc": "^4.62.0",
     "@tailwindcss/oxide-win32-x64-msvc": "^4.3.1",
+    "@vitejs/plugin-react": "catalog:",
     "lightningcss-win32-x64-msvc": "^1.32.0",
     "prettier": "^3.8.3",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "vite": "catalog:"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.0",
