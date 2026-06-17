@@ -1,0 +1,9 @@
+# Client-side deps for talking to the vLLM server.
+# (The vLLM server itself runs in the AMD lab / ROCm container — see README.)
+openai>=1.30.0
+httpx>=0.27.0
+
+# ── On the AMD lab GPU node only (ROCm build, NOT the CUDA wheel) ──
+# Install vLLM with ROCm support, e.g. via the rocm/vllm docker image, or:
+#   pip install vllm   # inside a ROCm 6.x environment
+# See: https://docs.vllm.ai/en/latest/getting_started/amd-installation.html
