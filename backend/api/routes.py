@@ -48,7 +48,7 @@ async def health():
     qdrant  = get_collection_info()
 
     return {
-        "status":    "healthy",
+        "status":    "ok",
         "version":   "1.0.0",
         "models": {
             "severity":  "loaded" if models.severity_model  else "unavailable",
